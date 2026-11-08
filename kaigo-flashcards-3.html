@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Kaigo Vocabs Flashcards</title>
+  <style>
+    :root {
+      --primary: #1e3a5f;
+      --accent: #2d6a9f;
+      --know: #2e7d32;
+      --dont: #c62828;
+      --bg: #f0f4f8;
+      --card: #ffffff;
+      --shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+      background: linear-gradient(160deg, #e8f0fe 0%, #f0f4f8 50%, #e3eaf5 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+      color: #1a1a1a;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 12px;
+      width: 100%;
+      max-width: 520px;
+    }
+    h1 {
+      font-size: 1.45rem;
+      color: var(--primary);
+      font-weight: 700;
+    }
+    .subtitle {
+      font-size: 0.85rem;
+      color: #555;
+      margin-top: 4px;
+    }
+
+    /* ===== Selection Screen ===== */
+    #selectionScreen {
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .day-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    @media (min-width: 420px) {
+      .day-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    .day-btn {
+      background: white;
+      border: 2px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 18px 12px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--primary);
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .day-btn:hover, .day-btn:active {
+      border-color: var(--accent);
+      background: #f0f7ff;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(45,106,159,0.15);
+    }
+    .day-btn .count {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #64748b;
+    }
+    .day-btn.all {
+      grid-column: 1 / -1;
+      background: linear-gradient(135deg, #1e3a5f, #2d6a9f);
+      color: white;
+      border: none;
+    }
+    .day-btn.all .count { color: rgba(255,255,255,0.8); }
+
+    /* ===== Study Screen ===== */
+    #studyScreen { display: none; width: 100%; max-width: 480px; flex-direction: column; align-items: center; }
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    .back-btn {
+      background: #e2e8f0;
+      border: none;
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--primary);
+      cursor: pointer;
+    }
+    .current-day-label {
+      font-weight: 700;
+      color: var(--primary);
+      font-size: 1rem;
+    }
+    .stats {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 8px 0 12px;
+      width: 100%;
+      font-size: 0.85rem;
+    }
+    .stat {
+      background: var(--card);
+      padding: 8px 12px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      flex: 1;
+      text-align: center;
+    }
+    .stat strong { display: block; font-size: 1.15rem; color: var(--primary); }
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: #e2e8f0;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #2d6a9f, #43a047);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+    .card-container {
+      width: 100%;
+      perspective: 1000px;
+      margin: 8px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 270px;
+    }
+    .card {
+      width: 100%;
+      height: 270px;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+    }
+    .card.flipped { transform: rotateY(180deg); }
+    .card-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      background: var(--card);
+    }
+    .card-front {
+      background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+      border: 2px solid #e2e8f0;
+    }
+    .card-back {
+      background: linear-gradient(145deg, #1e3a5f 0%, #2d6a9f 100%);
+      color: white;
+      transform: rotateY(180deg);
+    }
+    .jp {
+      font-size: 2.1rem;
+      font-weight: 700;
+      line-height: 1.3;
+      color: var(--primary);
+      margin-bottom: 10px;
+      word-break: break-all;
+    }
+    .reading {
+      font-size: 1.2rem;
+      color: #4a6fa5;
+      font-weight: 500;
+    }
+    .en {
+      font-size: 1.55rem;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+    .hint {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      margin-top: 14px;
+      position: absolute;
+      bottom: 14px;
+    }
+    .card-back .hint { color: rgba(255,255,255,0.6); }
+    .speak-btn {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      border: none;
+      background: #e0e7ff;
+      color: #3730a3;
+      font-size: 1.25rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      transition: transform 0.15s, background 0.15s;
+      z-index: 5;
+    }
+    .speak-btn:active { transform: scale(0.92); }
+    .speak-btn.speaking {
+      background: #c7d2fe;
+      animation: pulse 0.9s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+    .auto-speak-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: #475569;
+    }
+    .auto-speak-row input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+    .controls {
+      display: flex;
+      gap: 14px;
+      width: 100%;
+      margin-top: 8px;
+    }
+    button.action {
+      flex: 1;
+      border: none;
+      border-radius: 14px;
+      padding: 15px 10px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      color: white;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    button.action:active { transform: scale(0.97); }
+    .btn-know { background: linear-gradient(135deg, #2e7d32, #43a047); }
+    .btn-dont { background: linear-gradient(135deg, #c62828, #e53935); }
+    .empty-state {
+      display: none;
+      text-align: center;
+      padding: 36px 20px;
+      background: var(--card);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      width: 100%;
+    }
+    .empty-state h2 { color: var(--primary); margin-bottom: 8px; font-size: 1.4rem; }
+    .empty-state p { color: #64748b; margin-bottom: 18px; }
+    .empty-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .empty-actions button {
+      border: none;
+      border-radius: 12px;
+      padding: 12px 18px;
+      font-weight: 600;
+      cursor: pointer;
+      color: white;
+    }
+    .btn-restart { background: linear-gradient(135deg, #5e35b1, #7e57c2); }
+    .btn-back-days { background: linear-gradient(135deg, #1565c0, #1e88e5); }
+    footer {
+      margin-top: 24px;
+      font-size: 0.75rem;
+      color: #94a3b8;
+      text-align: center;
+    }
+    @media (max-width: 400px) {
+      .jp { font-size: 1.75rem; }
+      .en { font-size: 1.3rem; }
+      .card { height: 250px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>介護 Vocabs Flashcards</h1>
+    <p class="subtitle">Active Recall · Choose a day to study</p>
+  </header>
+
+  <!-- SELECTION SCREEN -->
+  <div id="selectionScreen">
+    <button class="day-btn all" onclick="startStudy(0)">
+      All Days
+      <span class="count" id="countAll">291 cards</span>
+    </button>
+    <div class="day-grid" id="dayGrid">
+      <!-- filled by JS -->
+    </div>
+  </div>
+
+  <!-- STUDY SCREEN -->
+  <div id="studyScreen">
+    <div class="top-bar">
+      <button class="back-btn" onclick="showSelection()">← Days</button>
+      <div class="current-day-label" id="currentDayLabel">Day 1</div>
+      <div style="width:70px"></div>
+    </div>
+
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <strong id="remaining">0</strong>
+        Remaining
+      </div>
+      <div class="stat">
+        <strong id="known">0</strong>
+        Known
+      </div>
+      <div class="stat">
+        <strong id="total">0</strong>
+        Total
+      </div>
+    </div>
+    <div class="auto-speak-row">
+      <input type="checkbox" id="autoSpeak" checked>
+      <label for="autoSpeak">Auto-play pronunciation</label>
+    </div>
+
+    <div class="card-container" id="cardContainer">
+      <div class="card" id="card" onclick="flipCard()">
+        <div class="card-face card-front">
+          <button class="speak-btn" id="speakBtn" onclick="event.stopPropagation(); speakJapanese()" title="Play pronunciation">🔊</button>
+          <div class="jp" id="jpText"></div>
+          <div class="reading" id="readingText"></div>
+          <div class="hint">タップして裏返す / Tap to flip</div>
+        </div>
+        <div class="card-face card-back">
+          <div class="en" id="enText"></div>
+          <div class="hint">タップで表に戻す / Tap to flip back</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="empty-state" id="emptyState">
+      <h2>🎉 All done!</h2>
+      <p id="emptyMessage">You finished this set.</p>
+      <div class="empty-actions">
+        <button class="btn-restart" onclick="restartCurrent()">Study again</button>
+        <button class="btn-back-days" onclick="showSelection()">Choose other day</button>
+      </div>
+    </div>
+
+    <div class="controls" id="controls">
+      <button class="action btn-dont" onclick="dontKnow()">✕ Don't know</button>
+      <button class="action btn-know" onclick="know()">✓ Know</button>
+    </div>
+  </div>
+
+  <footer>
+    Kaigo Vocabulary · Active recall practice
+  </footer>
+
+  <script>
+    const vocabData = [{"no":1,"jp":"利用者","reading":"りようしゃ","en":"user","day":1},{"no":2,"jp":"尊厳","reading":"そんげん","en":"dignity","day":1},{"no":3,"jp":"権利","reading":"けんり","en":"right","day":1},{"no":4,"jp":"自立","reading":"じりつ","en":"independence","day":1},{"no":5,"jp":"自己決定","reading":"じこけってい","en":"self-determination","day":1},{"no":6,"jp":"認知症","reading":"にんちしょう","en":"dementia","day":1},{"no":7,"jp":"自立支援","reading":"じりつしえん","en":"independence support","day":1},{"no":8,"jp":"日常生活動作","reading":"にちじょうせいかつどうさ","en":"activities of daily living","day":1},{"no":9,"jp":"手段的日常生活動作","reading":"しゅだんてきにちじょうせいかつどうさ","en":"instrumental activities of daily living","day":1},{"no":10,"jp":"生活の質","reading":"せいかつのしつ","en":"quality of life","day":1},{"no":11,"jp":"ノーマライゼーション","reading":"のーまらいぜーしょん","en":"normalization","day":1},{"no":12,"jp":"国際生活機能分類","reading":"こくさいせいかつきのうぶんるい","en":"international classification of functioning disability and health （icf）","day":1},{"no":13,"jp":"参加","reading":"さんか","en":"participation","day":1},{"no":14,"jp":"湿疹","reading":"しっしん","en":"eczema","day":1},{"no":15,"jp":"リハビリテーション","reading":"りはびりてーしょん","en":"rehabilitation","day":1},{"no":16,"jp":"言語聴覚士","reading":"げんごちょうかくし","en":"speech therapist","day":1},{"no":17,"jp":"理学療法士","reading":"りがくりょうほうし","en":"physical therapist","day":1},{"no":18,"jp":"作業療法士","reading":"さぎょうりょうほうし","en":"occupational therapist","day":1},{"no":19,"jp":"生活","reading":"せいかつ","en":"life","day":1},{"no":20,"jp":"自己実現","reading":"じこじつげん","en":"self-realization","day":1},{"no":21,"jp":"洗面所","reading":"せんめんじょ","en":"washroom","day":1},{"no":22,"jp":"介護予防","reading":"かいごよぼう","en":"preventive care","day":1},{"no":23,"jp":"レクリエーション","reading":"れくりえーしょん","en":"recreation","day":1},{"no":24,"jp":"介護職","reading":"かいごしょく","en":"care worker","day":1},{"no":25,"jp":"食事","reading":"しょくじ","en":"meal","day":1},{"no":26,"jp":"入浴","reading":"にゅうよく","en":"bathing","day":1},{"no":27,"jp":"排泄","reading":"はいせつ","en":"excretion","day":1},{"no":28,"jp":"プライバシー","reading":"ぷらいばしー","en":"privacy","day":1},{"no":29,"jp":"虐待","reading":"ぎゃくたい","en":"abuse","day":1},{"no":30,"jp":"守秘義務","reading":"しゅひぎむ","en":"duty of confidentiality","day":1},{"no":31,"jp":"身体拘束","reading":"しんたいこうそく","en":"physical restraint","day":1},{"no":32,"jp":"多職種連携","reading":"たしょくしゅれんけい","en":"team approach","day":1},{"no":33,"jp":"施設長","reading":"しせつちょう","en":"facility chief/manager","day":1},{"no":34,"jp":"看護師","reading":"かんごし","en":"nurse","day":1},{"no":35,"jp":"生活相談員","reading":"せいかつそうだんいん","en":"life counselor","day":1},{"no":36,"jp":"介護支援専門員","reading":"かいごしえんせんもんいん","en":"care manager","day":1},{"no":37,"jp":"介護保険制度","reading":"かいごほけんせいど","en":"long-term care insurance system","day":1},{"no":38,"jp":"要介護者","reading":"ようかいごしゃ","en":"care recipient/ person needed care","day":1},{"no":39,"jp":"要支援者","reading":"ようしえんしゃ","en":"person needed support","day":1},{"no":40,"jp":"居宅サービス","reading":"きょたくサービス","en":"home service","day":1},{"no":41,"jp":"ケアプラン","reading":"けあぷらん","en":"care plan","day":2},{"no":42,"jp":"介護過程","reading":"かいごかてい","en":"care process","day":2},{"no":43,"jp":"モニタリング","reading":"もにたりんぐ","en":"monitoring","day":2},{"no":44,"jp":"観察","reading":"かんさつ","en":"observation","day":2},{"no":45,"jp":"発熱","reading":"はつねつ","en":"fever","day":2},{"no":46,"jp":"高熱","reading":"こうねつ","en":"high fever","day":2},{"no":47,"jp":"脱水","reading":"だっすい","en":"dehydration","day":2},{"no":48,"jp":"嚥下障害","reading":"えんげしょうがい","en":"dysphagia","day":2},{"no":49,"jp":"尿失禁","reading":"にょうしっきん","en":"urinary incontinence","day":2},{"no":50,"jp":"確認","reading":"かくにん","en":"confirmation","day":2},{"no":51,"jp":"バイタルサイン","reading":"ばいたるさいん","en":"vital signs","day":2},{"no":52,"jp":"感染予防対策","reading":"かんせんよぼうたいさく","en":"infection prevention measures","day":2},{"no":53,"jp":"ボディメカニクス","reading":"ぼでぃめかにくす","en":"body mechanics","day":2},{"no":54,"jp":"安定","reading":"あんてい","en":"stability","day":2},{"no":55,"jp":"下肢","reading":"かし","en":"lower limb","day":2},{"no":56,"jp":"介護事故","reading":"かいごじこ","en":"nursing care accident","day":2},{"no":57,"jp":"リスク","reading":"りすく","en":"risk","day":2},{"no":58,"jp":"骨折","reading":"こっせつ","en":"fracture","day":2},{"no":59,"jp":"誤嚥","reading":"ごえん","en":"mis-swallowing","day":2},{"no":60,"jp":"火傷","reading":"やけど","en":"burn","day":2},{"no":61,"jp":"感染","reading":"かんせん","en":"infection","day":2},{"no":62,"jp":"ノロウイルス","reading":"のろういるす","en":"norovirus","day":2},{"no":63,"jp":"嘔吐","reading":"おうと","en":"vomit","day":2},{"no":64,"jp":"インフルエンザ","reading":"いんふるえんざ","en":"influenza","day":2},{"no":65,"jp":"感染対策","reading":"かんせんたいさく","en":"infection control","day":2},{"no":66,"jp":"アルコール消毒","reading":"アルコールしょうどく","en":"alcohol disinfection","day":2},{"no":67,"jp":"手背","reading":"しゅはい","en":"back of the hand","day":2},{"no":68,"jp":"ディスポ手袋","reading":"ディスポてぶくろ","en":"disposable gloves","day":2},{"no":69,"jp":"欲求","reading":"よっきゅう","en":"desire","day":2},{"no":70,"jp":"記憶","reading":"きおく","en":"memory","day":2},{"no":71,"jp":"脳","reading":"のう","en":"brain","day":2},{"no":72,"jp":"感情","reading":"かんじょう","en":"emotion","day":2},{"no":73,"jp":"生理欲求","reading":"せいりよっきゅう","en":"physiologic needs","day":2},{"no":74,"jp":"安定","reading":"あんてい","en":"stable","day":2},{"no":75,"jp":"マズロー","reading":"まずろー","en":"maslow’s","day":2},{"no":76,"jp":"学習","reading":"がくしゅう","en":"learning","day":2},{"no":77,"jp":"感覚記憶","reading":"かんかくきおく","en":"sensory memory","day":2},{"no":78,"jp":"短期記憶","reading":"たんききおく","en":"short-term memory","day":2},{"no":79,"jp":"長期記憶","reading":"ちょうききおく","en":"long-term memory","day":2},{"no":80,"jp":"手続き記憶","reading":"てつづききおく","en":"procedural memory","day":2},{"no":81,"jp":"意味記憶","reading":"いみきおく","en":"semantic memory","day":3},{"no":82,"jp":"エピソード記憶","reading":"エピソードきおく","en":"episodic memory","day":3},{"no":83,"jp":"ホメオスタシス","reading":"ほめおすたしす","en":"homeostasis","day":3},{"no":84,"jp":"体温","reading":"たいおん","en":"body temperature","day":3},{"no":85,"jp":"平熱","reading":"へいねつ","en":"normal temperature","day":3},{"no":86,"jp":"脈拍","reading":"みゃくはく","en":"pulse","day":3},{"no":87,"jp":"呼吸","reading":"こきゅう","en":"breath","day":3},{"no":88,"jp":"血圧","reading":"けつあつ","en":"blood pressure","day":3},{"no":89,"jp":"中枢神経","reading":"ちゅうすうしんけい","en":"central nervous system","day":3},{"no":90,"jp":"自律神経","reading":"じりつしんけい","en":"autonomic nerve","day":3},{"no":91,"jp":"循環器系","reading":"じゅんかんきけい","en":"circulatory system","day":3},{"no":92,"jp":"動脈","reading":"どうみゃく","en":"artery","day":3},{"no":93,"jp":"静脈","reading":"じょうみゃく","en":"veins","day":3},{"no":94,"jp":"呼吸器系","reading":"こきゅうきけい","en":"respiratory system","day":3},{"no":95,"jp":"気管","reading":"きかん","en":"trachea","day":3},{"no":96,"jp":"肺","reading":"はい","en":"lung","day":3},{"no":97,"jp":"感覚器系","reading":"かんかくきけい","en":"sense organ","day":3},{"no":98,"jp":"視覚","reading":"しかく","en":"visual perception","day":3},{"no":99,"jp":"聴覚","reading":"ちょうかく","en":"auditory perception","day":3},{"no":100,"jp":"嗅覚","reading":"きゅうかく","en":"sense of smell","day":3},{"no":101,"jp":"難聴","reading":"なんちょう","en":"difficulty in hearing","day":3},{"no":102,"jp":"補聴器","reading":"ほちょうき","en":"hearing aid","day":3},{"no":103,"jp":"大脳","reading":"だいのう","en":"cerebrum","day":3},{"no":104,"jp":"消化器系","reading":"しょうかきけい","en":"digestive system","day":3},{"no":105,"jp":"口腔","reading":"こうくう","en":"oral cavity","day":3},{"no":106,"jp":"食道","reading":"しょくどう","en":"esophagus","day":3},{"no":107,"jp":"胃","reading":"い","en":"stomach","day":3},{"no":108,"jp":"小腸","reading":"しょうちょう","en":"small intestine","day":3},{"no":109,"jp":"大腸","reading":"だいちょう","en":"large intestine","day":3},{"no":110,"jp":"肝臓","reading":"かんぞう","en":"liver","day":3},{"no":111,"jp":"膵臓","reading":"すいぞう","en":"pancreas","day":3},{"no":112,"jp":"排便","reading":"はいべん","en":"evacuation/bowel movement","day":3},{"no":113,"jp":"泌尿器（系）ひにょうき","reading":"（けい）","en":"urinary system","day":3},{"no":114,"jp":"腎臓","reading":"じんぞう","en":"kidney","day":3},{"no":115,"jp":"膀胱","reading":"ぼうこう","en":"bladder","day":3},{"no":116,"jp":"内分泌腺","reading":"ないぶんぴつせん","en":"endocrine gland","day":3},{"no":117,"jp":"骨格系","reading":"こっかくけい","en":"skeletal system","day":3},{"no":118,"jp":"関節","reading":"かんせつ","en":"joints","day":3},{"no":119,"jp":"筋肉","reading":"きんにく","en":"muscles","day":3},{"no":120,"jp":"睡眠","reading":"すいみん","en":"sleep","day":3},{"no":121,"jp":"体内時計","reading":"たいないとけい","en":"biological clock","day":4},{"no":122,"jp":"不眠症","reading":"ふみんしょう","en":"insomnia","day":4},{"no":123,"jp":"睡眠障害","reading":"すいみんしょうがい","en":"sleep disorder","day":4},{"no":124,"jp":"老化","reading":"ろうか","en":"aging","day":4},{"no":125,"jp":"ワーキングメモリー","reading":"わーきんぐめもりー","en":"working memory","day":4},{"no":126,"jp":"ADLとQOLの低下","reading":"えーでぃーえるとキューオーエルのていか","en":"decline of adl and qol","day":4},{"no":127,"jp":"脳梗塞","reading":"のうこうそく","en":"cerebral infarction/stroke","day":4},{"no":128,"jp":"高血圧","reading":"こうけつあつ","en":"high blood pressure","day":4},{"no":129,"jp":"肺炎","reading":"はいえん","en":"pneumonia","day":4},{"no":130,"jp":"関節リウマチ","reading":"かんせつリウマチ","en":"rheumatoid arthritis","day":4},{"no":131,"jp":"脊椎","reading":"せきつい","en":"spine","day":4},{"no":132,"jp":"白内障と緑内障","reading":"はくないしょうとりょくないしょう","en":"cataract and glaucoma","day":4},{"no":133,"jp":"褥瘡（床ずれ）","reading":"じょくそう（とこずれ）","en":"bedsore","day":4},{"no":134,"jp":"腎不全","reading":"じんふぜん","en":"kidney failure","day":4},{"no":135,"jp":"頻尿","reading":"ひんにょう","en":"increased urinary frequency","day":4},{"no":136,"jp":"尿失禁","reading":"にょうしっきん","en":"urinary incontinence","day":4},{"no":137,"jp":"便秘","reading":"べんぴ","en":"constipation","day":4},{"no":138,"jp":"下痢","reading":"げり","en":"diarrhea","day":4},{"no":139,"jp":"がん","reading":"がん","en":"cancer","day":4},{"no":140,"jp":"障害","reading":"しょうがい","en":"disability","day":4},{"no":141,"jp":"リハビリテーション","reading":"リハビリテーション","en":"rehabilitation","day":4},{"no":142,"jp":"視覚障害","reading":"しかくしょうがい","en":"visual deficit/impairment","day":4},{"no":143,"jp":"白杖","reading":"はくじょう","en":"white cane","day":4},{"no":144,"jp":"歩行","reading":"ほこう","en":"walking","day":4},{"no":145,"jp":"誘導","reading":"ゆうどう","en":"guide","day":4},{"no":146,"jp":"視野","reading":"しや","en":"visual field","day":4},{"no":147,"jp":"聴覚障害","reading":"ちょうかくしょうがい","en":"hearing disability","day":4},{"no":148,"jp":"筆談","reading":"ひつだん","en":"passing notes","day":4},{"no":149,"jp":"言語障害","reading":"げんごしょうがい","en":"speech disability/impairment","day":4},{"no":150,"jp":"失語症","reading":"しつごしょう","en":"aphasia","day":4},{"no":151,"jp":"肢体不自由","reading":"したいふじゆう","en":"physical handicap","day":4},{"no":152,"jp":"片麻痺","reading":"かたまひ","en":"hemiplegia","day":4},{"no":153,"jp":"人工透析","reading":"じんこうとうせき","en":"artificial dialysis","day":4},{"no":154,"jp":"カテーテル","reading":"かてーてる","en":"catheter","day":4},{"no":155,"jp":"注意障害","reading":"ちゅういしょうがい","en":"aprosexia/inability to focus","day":4},{"no":156,"jp":"失語・失認・失行","reading":"しつご・しつにん・しっこう","en":"aphasia, agnosia, apraxia","day":4},{"no":157,"jp":"知的障害","reading":"ちてきしょうがい","en":"mental retardation","day":4},{"no":158,"jp":"身振り","reading":"みぶり","en":"gesture","day":4},{"no":159,"jp":"手振り","reading":"てぶり","en":"hand gesture","day":4},{"no":160,"jp":"発達障害","reading":"はったつしょうがい","en":"developmental disorder","day":4},{"no":161,"jp":"認知症","reading":"にんちしょう","en":"dementia","day":5},{"no":162,"jp":"アルツハイマー型認知症","reading":"アルツハイマーがたにんちしょう","en":"alzheimer-type dementia","day":5},{"no":163,"jp":"高血圧症","reading":"こうけつあつしょう","en":"high blood pressure","day":5},{"no":164,"jp":"中核症状","reading":"ちゅうかくしょうじょう","en":"core symptoms","day":5},{"no":165,"jp":"周辺症状（BPSD)","reading":"しゅうへんしょうじょう","en":"peripheral symptoms","day":5},{"no":166,"jp":"うつ病","reading":"うつびょう","en":"depression","day":5},{"no":167,"jp":"表情","reading":"ひょうじょう","en":"facial expression","day":5},{"no":168,"jp":"身振り手振り（ジェスチャー）","reading":"みぶりてぶり","en":"gestures","day":5},{"no":169,"jp":"意思","reading":"いし","en":"intention","day":5},{"no":170,"jp":"感情","reading":"かんじょう","en":"feeling","day":5},{"no":171,"jp":"利用者","reading":"りようしゃ","en":"user","day":5},{"no":172,"jp":"介護職","reading":"かいごしょく","en":"caregiver","day":5},{"no":173,"jp":"高齢者","reading":"こうれいしゃ","en":"senior citizens","day":5},{"no":174,"jp":"障害","reading":"しょうがい","en":"impediment","day":5},{"no":175,"jp":"言語的チャンネル","reading":"げんごてき","en":"verbal channel","day":5},{"no":176,"jp":"非言語的チャンネル","reading":"ひげんごてき","en":"non-verbal channel","day":5},{"no":177,"jp":"態度","reading":"たいど","en":"attitude, manner","day":5},{"no":178,"jp":"言語的コミュニケーション","reading":"げんごてき コミュニケーション","en":"verbal communication","day":5},{"no":179,"jp":"非言語的コミュニケーション","reading":"ひげんごてき コミュニケーション","en":"non-verbal communication","day":5},{"no":180,"jp":"受容","reading":"じゅよう","en":"acceptance","day":5},{"no":181,"jp":"共感","reading":"きょうかん","en":"sympathy","day":5},{"no":182,"jp":"尊重","reading":"そんちょう","en":"respect","day":5},{"no":183,"jp":"信頼関係","reading":"しんらいかんけい","en":"trust relationship","day":5},{"no":184,"jp":"閉じられた質問（クローズドクエスチョン）","reading":"とじられたしつもん","en":"closed question","day":5},{"no":185,"jp":"開かれた質問（オープンクエスチョン）","reading":"ひらかれたしつもん","en":"open question","day":5},{"no":186,"jp":"自己決定","reading":"じこけってい","en":"self-determination","day":5},{"no":187,"jp":"手話","reading":"しゅわ","en":"sign language","day":5},{"no":188,"jp":"記録（介護記録）","reading":"きろく（かいごきろく）","en":"record","day":5},{"no":189,"jp":"インシデントレポート","reading":"いんしでんとれぽーと","en":"incident report","day":5},{"no":190,"jp":"ヒヤリ・ハット","reading":"ひやり・はっと","en":"near miss incident","day":5},{"no":191,"jp":"記入","reading":"きにゅう","en":"record","day":5},{"no":192,"jp":"報告","reading":"ほうこく","en":"report","day":5},{"no":193,"jp":"連絡","reading":"れんらく","en":"contact","day":5},{"no":194,"jp":"相談","reading":"そうだん","en":"consult","day":5},{"no":195,"jp":"更衣","reading":"こうい","en":"changing clothes","day":5},{"no":196,"jp":"移動","reading":"いどう","en":"moving/movement","day":5},{"no":197,"jp":"家事","reading":"かじ","en":"house chores","day":5},{"no":198,"jp":"生活支援","reading":"せいかつしえん","en":"life/lifestyle support","day":5},{"no":199,"jp":"ICF","reading":"あいしーえふ","en":"international classification of function","day":5},{"no":200,"jp":"居室","reading":"きょしつ","en":"resident room","day":5},{"no":201,"jp":"寝室","reading":"しんしつ","en":"bed room","day":6},{"no":202,"jp":"台所","reading":"だいどころ","en":"kitchen","day":6},{"no":203,"jp":"廊下","reading":"ろうか","en":"corridor","day":6},{"no":204,"jp":"階段","reading":"かいだん","en":"stair","day":6},{"no":205,"jp":"布団","reading":"ふとん","en":"futon","day":6},{"no":206,"jp":"枕","reading":"まくら","en":"pillow","day":6},{"no":207,"jp":"ベッドメイキング","reading":"べっどめいきんぐ","en":"bedmaking","day":6},{"no":208,"jp":"シーツ","reading":"しーつ","en":"bed sheet","day":6},{"no":209,"jp":"脱衣室","reading":"だついしつ","en":"changing room","day":6},{"no":210,"jp":"バスタオル","reading":"ばすたおる","en":"bath towel","day":6},{"no":211,"jp":"バスボード","reading":"ばすぼーど","en":"bath board","day":6},{"no":212,"jp":"ブラシ","reading":"ぶらし","en":"brush","day":6},{"no":213,"jp":"洗剤","reading":"せんざい","en":"detergent","day":6},{"no":214,"jp":"次亜塩素酸","reading":"じあえんそさん","en":"hypochlorous acid","day":6},{"no":215,"jp":"便器","reading":"べんき","en":"toilet bowl","day":6},{"no":216,"jp":"バリアフリー","reading":"ばりあふりー","en":"barrier free","day":6},{"no":217,"jp":"ユニットケア","reading":"ゆにっとけあ","en":"unit care","day":6},{"no":218,"jp":"グループホーム","reading":"ぐるーぷほーむ","en":"group home","day":6},{"no":219,"jp":"個室","reading":"こしつ","en":"single room","day":6},{"no":220,"jp":"歩行","reading":"ほこう","en":"walking","day":6},{"no":221,"jp":"車椅子","reading":"くるまいす","en":"wheelchair","day":6},{"no":222,"jp":"体位変換","reading":"たいいへんかん","en":"changing body position","day":6},{"no":223,"jp":"廃用症候群","reading":"はいようしょうこうぐん","en":"disuse syndrome","day":6},{"no":224,"jp":"重心","reading":"じゅうしん","en":"center of gravity","day":6},{"no":225,"jp":"支持基底面","reading":"しじきていめん","en":"base of support","day":6},{"no":226,"jp":"臥位","reading":"がい","en":"recumbent position","day":6},{"no":227,"jp":"仰臥位","reading":"ぎょうがい","en":"lying on the back","day":6},{"no":228,"jp":"側臥位","reading":"そくがい","en":"lying on your side","day":6},{"no":229,"jp":"半座位","reading":"はんざい","en":"half sitting position","day":6},{"no":230,"jp":"座位","reading":"ざい","en":"sitting position","day":6},{"no":231,"jp":"立位","reading":"りつい","en":"standing position","day":6},{"no":232,"jp":"皮膚","reading":"ひふ","en":"skin","day":6},{"no":233,"jp":"患側","reading":"かんそく","en":"affected side","day":6},{"no":234,"jp":"健側","reading":"けんそく","en":"healthy side","day":6},{"no":235,"jp":"水平動","reading":"すいへいどう","en":"horizontal transfer","day":6},{"no":236,"jp":"上方移動","reading":"じょうほういどう","en":"upward transfer","day":6},{"no":237,"jp":"一部介助","reading":"いちぶかいじょ","en":"partial assistance","day":6},{"no":238,"jp":"見守り","reading":"みまもり","en":"watching over","day":6},{"no":239,"jp":"全介助","reading":"ぜんかいじょ","en":"full assistance","day":6},{"no":240,"jp":"T字杖","reading":"てぃーじづえ","en":"t cane","day":6},{"no":241,"jp":"グリップ","reading":"ぐりっぷ","en":"grip","day":7},{"no":242,"jp":"アームサポート","reading":"あーむさぽーと","en":"arm support","day":7},{"no":243,"jp":"フットサポート","reading":"ふっとさぽーと","en":"foot support","day":7},{"no":244,"jp":"ティッピングレバー","reading":"てぃっぴんぐればー","en":"tipping lever","day":7},{"no":245,"jp":"ブレーキ","reading":"ぶれーき","en":"brake","day":7},{"no":246,"jp":"ボディメカニクス","reading":"ぼでぃめかにくす","en":"body mechanics","day":7},{"no":247,"jp":"ビタミン","reading":"びたみん","en":"vitamin","day":7},{"no":248,"jp":"嚥下","reading":"えんげ","en":"swallowing","day":7},{"no":249,"jp":"咀嚼","reading":"そしゃく","en":"chewing","day":7},{"no":250,"jp":"嚥下障害","reading":"えんげしょうがい","en":"dysphagia/ difficulty of swallowing","day":7},{"no":251,"jp":"PICA","reading":"ぴか","en":"pica (disorder)","day":7},{"no":252,"jp":"献立","reading":"こんだて","en":"menu","day":7},{"no":253,"jp":"口腔ケア","reading":"こうくうケア","en":"oral care","day":7},{"no":254,"jp":"義歯（入れ歯）","reading":"ぎし（いれば）","en":"dentures","day":7},{"no":255,"jp":"額","reading":"ひたい","en":"forehead","day":7},{"no":256,"jp":"とろみ","reading":"とろみ","en":"thickener","day":7},{"no":257,"jp":"誤嚥性肺炎","reading":"ごえんせいはいえん","en":"aspiration pneumonia","day":7},{"no":258,"jp":"口腔機能","reading":"こうくうきのう","en":"oral cavity function","day":7},{"no":259,"jp":"体操","reading":"たいそう","en":"physical exercise","day":7},{"no":260,"jp":"尿管","reading":"にょうかん","en":"ureter","day":7},{"no":261,"jp":"便秘","reading":"べんぴ","en":"constipation","day":7},{"no":262,"jp":"下痢","reading":"げり","en":"diarrhea","day":7},{"no":263,"jp":"便失禁","reading":"べんしっきん","en":"fecal incontinence","day":7},{"no":264,"jp":"ポータブルトイレ","reading":"ぽーたぶるといれ","en":"portable toilet","day":7},{"no":265,"jp":"おむつ","reading":"おむつ","en":"diaper","day":7},{"no":266,"jp":"交換","reading":"こうかん","en":"change","day":7},{"no":267,"jp":"ディスポーザブル手袋","reading":"ディスポーザブルてぶくろ","en":"disposable gloves","day":7},{"no":268,"jp":"みじたく","reading":"みじたく","en":"get dressed","day":7},{"no":269,"jp":"爪","reading":"つめ","en":"nail","day":7},{"no":270,"jp":"化粧","reading":"けしょう","en":"make up","day":7},{"no":271,"jp":"着脱","reading":"ちゃくだつ","en":"taking off (clothing)","day":7},{"no":272,"jp":"整容","reading":"せいよう","en":"cosmetic cleaning","day":7},{"no":273,"jp":"目頭","reading":"めがしら","en":"inner corners of eyes","day":7},{"no":274,"jp":"目尻","reading":"めじり","en":"outer corners of eyes","day":7},{"no":275,"jp":"髭","reading":"ひげ","en":"beard","day":7},{"no":276,"jp":"髭剃り","reading":"ひげそり","en":"shaving","day":7},{"no":277,"jp":"電気かみそり","reading":"でんきかみそり","en":"electric razor","day":7},{"no":278,"jp":"歯ブラシ","reading":"はぶらし","en":"toothbrush","day":7},{"no":279,"jp":"清潔","reading":"せいけつ","en":"cleanliness","day":7},{"no":280,"jp":"部分浴","reading":"ぶぶんよく","en":"partial bath","day":7},{"no":281,"jp":"清拭","reading":"せいしき","en":"bed bath","day":7},{"no":282,"jp":"汗","reading":"あせ","en":"sweat","day":7},{"no":283,"jp":"ヒートショック現象","reading":"ヒートショックげんしょう","en":"heat shock","day":7},{"no":284,"jp":"脱衣所","reading":"だついじょ","en":"changing room","day":7},{"no":285,"jp":"手浴","reading":"しゅよく","en":"hand bath","day":7},{"no":286,"jp":"足浴","reading":"そくよく","en":"foot bath","day":7},{"no":287,"jp":"バケツ","reading":"ばけつ","en":"bucket","day":7},{"no":288,"jp":"可燃ごみ","reading":"かねんごみ","en":"combustible waste","day":7},{"no":289,"jp":"不燃ごみ","reading":"ふねんごみ","en":"incombustible waste","day":7},{"no":290,"jp":"資源ごみ","reading":"しげんごみ","en":"recyclable waste","day":7},{"no":291,"jp":"ペットボトル","reading":"ぺっとぼとる","en":"plastic bottle","day":7}];
+
+    // Day counts
+    const dayCounts = {};
+    vocabData.forEach(v => {
+      dayCounts[v.day] = (dayCounts[v.day] || 0) + 1;
+    });
+
+    let queue = [];
+    let knownCount = 0;
+    let current = null;
+    let isFlipped = false;
+    let currentDay = 0; // 0 = all
+    let currentSet = [];
+    let japaneseVoice = null;
+
+    // Load Japanese voice when available
+    function loadVoices() {
+      const voices = window.speechSynthesis.getVoices();
+      japaneseVoice = voices.find(v => v.lang === 'ja-JP' || v.lang.startsWith('ja'))
+                   || voices.find(v => v.lang.includes('ja'));
+    }
+    if (window.speechSynthesis) {
+      loadVoices();
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+
+    function speakJapanese() {
+      if (!current || !window.speechSynthesis) return;
+      window.speechSynthesis.cancel();
+
+      // Prefer speaking the reading (hiragana) for clearer pronunciation,
+      // fall back to the written form.
+      const text = current.reading || current.jp;
+      if (!text) return;
+
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.lang = 'ja-JP';
+      utt.rate = 0.85;
+      utt.pitch = 1.0;
+      if (japaneseVoice) utt.voice = japaneseVoice;
+
+      const btn = document.getElementById('speakBtn');
+      if (btn) btn.classList.add('speaking');
+
+      utt.onend = utt.onerror = () => {
+        if (btn) btn.classList.remove('speaking');
+      };
+
+      window.speechSynthesis.speak(utt);
+    }
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // Build selection UI
+    function buildSelection() {
+      document.getElementById('countAll').textContent = vocabData.length + ' cards';
+      const grid = document.getElementById('dayGrid');
+      grid.innerHTML = '';
+      for (let d = 1; d <= 7; d++) {
+        const btn = document.createElement('button');
+        btn.className = 'day-btn';
+        btn.onclick = () => startStudy(d);
+        btn.innerHTML = `Day ${d}<span class="count">${dayCounts[d] || 0} cards</span>`;
+        grid.appendChild(btn);
+      }
+    }
+
+    function showSelection() {
+      document.getElementById('selectionScreen').style.display = 'flex';
+      document.getElementById('studyScreen').style.display = 'none';
+    }
+
+    function startStudy(day) {
+      currentDay = day;
+      if (day === 0) {
+        currentSet = [...vocabData];
+        document.getElementById('currentDayLabel').textContent = 'All Days';
+      } else {
+        currentSet = vocabData.filter(v => v.day === day);
+        document.getElementById('currentDayLabel').textContent = `Day ${day}`;
+      }
+      document.getElementById('selectionScreen').style.display = 'none';
+      document.getElementById('studyScreen').style.display = 'flex';
+      restartCurrent();
+    }
+
+    function restartCurrent() {
+      queue = shuffle([...currentSet]);
+      knownCount = 0;
+      current = null;
+      isFlipped = false;
+      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById('cardContainer').style.display = 'flex';
+      document.getElementById('controls').style.display = 'flex';
+      document.getElementById('total').textContent = currentSet.length;
+      showNext();
+      updateStats();
+    }
+
+    function updateStats() {
+      const remaining = queue.length + (current ? 1 : 0);
+      document.getElementById('remaining').textContent = remaining;
+      document.getElementById('known').textContent = knownCount;
+      const total = currentSet.length;
+      const pct = total ? Math.round((knownCount / total) * 100) : 0;
+      document.getElementById('progressFill').style.width = pct + '%';
+    }
+
+    function showNext() {
+      if (queue.length === 0) {
+        current = null;
+        document.getElementById('cardContainer').style.display = 'none';
+        document.getElementById('controls').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'block';
+        document.getElementById('emptyMessage').textContent =
+          currentDay === 0
+            ? 'You reviewed every card!'
+            : `You finished Day ${currentDay}!`;
+        updateStats();
+        return;
+      }
+      current = queue.shift();
+      isFlipped = false;
+
+      const card = document.getElementById('card');
+
+      // Snap back to front WITHOUT animation so the new English
+      // is never visible during a rotate transition.
+      card.style.transition = 'none';
+      card.classList.remove('flipped');
+      // Force reflow so the browser applies the non-flipped state immediately
+      void card.offsetWidth;
+      // Restore transition for future flips
+      card.style.transition = '';
+
+      // Now safely update both faces while the card is on the front
+      document.getElementById('jpText').textContent = current.jp;
+
+      // Hide reading if the Japanese is already pure (or mostly) katakana
+      const isKatakana = /^[ァ-ンー・\s\dA-Za-z]+$/.test(current.jp.replace(/[（）()]/g, ''));
+      const readingEl = document.getElementById('readingText');
+      if (isKatakana || !current.reading || current.reading === current.jp) {
+        readingEl.textContent = '';
+        readingEl.style.display = 'none';
+      } else {
+        readingEl.textContent = current.reading;
+        readingEl.style.display = '';
+      }
+
+      document.getElementById('enText').textContent = current.en;
+
+      updateStats();
+
+      // Auto-play pronunciation if enabled
+      const auto = document.getElementById('autoSpeak');
+      if (auto && auto.checked) {
+        // Small delay so the card is fully ready
+        setTimeout(speakJapanese, 180);
+      }
+    }
+
+    function flipCard() {
+      if (!current) return;
+      isFlipped = !isFlipped;
+      document.getElementById('card').classList.toggle('flipped', isFlipped);
+    }
+
+    function know() {
+      if (!current) return;
+      knownCount++;
+      current = null;
+      showNext();
+    }
+
+    function dontKnow() {
+      if (!current) return;
+      // Put back and reshuffle so it appears later
+      queue.push(current);
+      if (queue.length > 1) shuffle(queue);
+      current = null;
+      showNext();
+    }
+
+    // Keyboard
+    document.addEventListener('keydown', (e) => {
+      if (document.getElementById('studyScreen').style.display === 'none') return;
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        flipCard();
+      } else if (e.key === 'ArrowRight' || e.key === 'k' || e.key === 'K') {
+        know();
+      } else if (e.key === 'ArrowLeft' || e.key === 'd' || e.key === 'D') {
+        dontKnow();
+      }
+    });
+
+    // Init
+    buildSelection();
+  </script>
+</body>
+</html>
