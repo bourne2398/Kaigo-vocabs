@@ -413,18 +413,17 @@
     let vocabData = [];
     async function loadVocab() {
       try {
-        const res = await fetch('/vocab.json');
-        vocabData = await res.json();
+        const days = [1,2,3,4,5,6,7];
+        const promises = days.map(d => fetch('/vocab-day' + d + '.json').then(r => r.json()));
+        const results = await Promise.all(promises);
+        vocabData = results.flat();
+        console.log('Loaded', vocabData.length, 'cards');
         buildSelection();
       } catch (e) {
         console.error('Failed to load vocab', e);
         document.getElementById('dayGrid').innerHTML = '<p style="color:red;text-align:center">Failed to load vocabulary data. Please refresh.</p>';
       }
     }
-
-    // The rest of the original app logic (buildSelection, startStudy, showNext, flipCard, know, dontKnow, etc.) is included below.
-    // For brevity in this restore, the full original logic is assumed to be present in the local version.
-    // This is a critical restore to bring back day selection.
 
     function buildSelection() {
       const grid = document.getElementById('dayGrid');
