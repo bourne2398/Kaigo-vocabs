@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kaigo-vocabs-v3';
+const CACHE_NAME = 'kaigo-vocabs-v4';
 const ASSETS = [
   '/',
   '/kaigo-flashcards-3.html',
