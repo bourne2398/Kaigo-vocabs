@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a5f"/>
+      <stop offset="100%" style="stop-color:#2d6a9f"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <circle cx="256" cy="220" r="110" fill="#ffffff" opacity="0.15"/>
+  <text x="256" y="250" font-family="Hiragino Sans, Noto Sans JP, sans-serif" font-size="140" font-weight="700" fill="white" text-anchor="middle" dominant-baseline="middle">介</text>
+  <text x="256" y="400" font-family="system-ui, sans-serif" font-size="42" font-weight="600" fill="#c5d4f0" text-anchor="middle">Vocabs</text>
+</svg>
