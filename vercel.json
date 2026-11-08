@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/", "destination": "/kaigo-flashcards-3.html" }
+  ]
+}
