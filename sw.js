@@ -1,8 +1,14 @@
-const CACHE_NAME = 'kaigo-vocabs-v4';
+const CACHE_NAME = 'kaigo-vocabs-v5';
 const ASSETS = [
   '/',
   '/kaigo-flashcards-3.html',
-  '/vocab.json',
+  '/vocab-day1.json',
+  '/vocab-day2.json',
+  '/vocab-day3.json',
+  '/vocab-day4.json',
+  '/vocab-day5.json',
+  '/vocab-day6.json',
+  '/vocab-day7.json',
   '/manifest.json',
   '/icon.svg',
   '/sw.js'
