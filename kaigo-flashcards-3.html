@@ -66,6 +66,7 @@
     .mode-btn:active { transform: scale(0.98); }
     .day-section-title { font-size: 0.9rem; font-weight: 600; color: #475569; margin-top: 4px; }
     .day-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    
     @media (min-width: 420px) { .day-grid { grid-template-columns: repeat(3, 1fr); } }
     .day-btn {
       background: white; border: 2px solid #e2e8f0; border-radius: 16px;
@@ -237,15 +238,22 @@
     .scroll-tool-btn.active {
       background: #1e3a5f; border-color: #3b82f6; color: #93c5fd;
     }
-    #cardList.hide-reading-en .reading,
-    #cardList.hide-reading-en .en {
+    #cardList.hide-reading-en .flash-card:not(.revealed) .reading,
+    #cardList.hide-reading-en .flash-card:not(.revealed) .en {
       display: none !important;
     }
-    #cardList.hide-reading-en .flash-card {
+    #cardList.hide-reading-en .flash-card:not(.revealed) {
       min-height: 100px;
     }
-    #cardList.hide-reading-en .jp-row {
+    #cardList.hide-reading-en .flash-card:not(.revealed) .jp-row {
       margin-bottom: 0;
+    }
+    #cardList.hide-reading-en .flash-card.revealed .reading,
+    #cardList.hide-reading-en .flash-card.revealed .en {
+      display: block !important;
+    }
+    #cardList.hide-reading-en .flash-card {
+      cursor: pointer;
     }
     footer { margin-top: 24px; font-size: 0.75rem; color: #94a3b8; text-align: center; }
     @media (max-width: 400px) {
@@ -448,8 +456,7 @@
         return;
       }
       visibleCards.forEach(card => {
-        const el = document.createElement('div');
-        el.className = 'flash-card';
+        const el = document.createElement('div');\n        el.className = 'flash-card';
         el.dataset.no = card.no;
         const showReading = card.reading && card.reading !== card.jp &&
           !/^[ァ-ンー・\\s\\dA-Za-z]+$/.test(card.jp.replace(/[（）()]/g, ''));
@@ -460,7 +467,7 @@
             <div class="jp">${card.jp}</div>
           </div>
           <div class="en">${card.en}</div>
-          <button class="speak-btn" data-jp="${card.jp.replace(/"/g, '"')}" title="Play pronunciation">🔊</button>
+          <button class="speak-btn" data-jp="${card.jp.replace(/"/g, '&quot;')}" title="Play pronunciation">🔊</button>
         `;
         list.appendChild(el);
         attachSwipeHandlers(el, card.no);
@@ -474,12 +481,13 @@
     }
 
     function attachSwipeHandlers(el, cardNo) {
-      let startX = 0, startY = 0, currentX = 0, tracking = false, decided = false, isHorizontal = false;
+      let startX = 0, startY = 0, currentX = 0, currentY = 0, tracking = false, decided = false, isHorizontal = false;
 
       const onStart = (clientX, clientY) => {
         startX = clientX;
         startY = clientY;
         currentX = 0;
+        currentY = 0;
         tracking = true;
         decided = false;
         isHorizontal = false;
@@ -490,6 +498,7 @@
         if (!tracking) return;
         const dx = clientX - startX;
         const dy = clientY - startY;
+        currentY = dy;
         if (!decided) {
           if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
             decided = true;
@@ -515,11 +524,14 @@
       };
 
       const onEnd = () => {
-        if (!tracking) return;
+        if (!tracking && !el.classList.contains('swiping')) return;
+        const wasTracking = tracking;
         tracking = false;
         el.classList.remove('swiping');
         const threshold = 90;
-        if (Math.abs(currentX) > threshold) {
+        const moved = Math.abs(currentX) > 12 || Math.abs(currentY) > 12 || decided;
+
+        if (wasTracking && Math.abs(currentX) > threshold && isHorizontal) {
           const dir = currentX > 0 ? 1 : -1;
           el.style.transition = 'transform 0.22s ease, opacity 0.22s ease';
           el.style.transform = 'translateX(' + (dir * window.innerWidth) + 'px)';
@@ -541,8 +553,14 @@
           el.style.transform = '';
           el.style.opacity = '';
           setTimeout(() => { el.style.transition = ''; }, 220);
+
+          // Tap (no real swipe) while Hide reading/EN is on → toggle reveal
+          if (wasTracking && !moved && hideReadingEn) {
+            el.classList.toggle('revealed');
+          }
         }
         currentX = 0;
+        currentY = 0;
       };
 
       el.addEventListener('touchstart', (e) => {
@@ -586,6 +604,8 @@
       hideReadingEn = !hideReadingEn;
       const list = document.getElementById('cardList');
       list.classList.toggle('hide-reading-en', hideReadingEn);
+      // Clear any per-card reveals when switching mode
+      list.querySelectorAll('.flash-card.revealed').forEach(el => el.classList.remove('revealed'));
       const btn = document.getElementById('hideReadingBtn');
       btn.classList.toggle('active', hideReadingEn);
       btn.textContent = hideReadingEn ? '👁 Show reading/EN' : '👁 Hide reading/EN';
@@ -722,7 +742,6 @@
         navigator.serviceWorker.register('/sw.js')
           .then((reg) => {
             console.log('SW registered', reg.scope);
-            // Check for updates periodically while the app is open
             setInterval(() => reg.update(), 60 * 1000);
           })
           .catch((err) => console.log('SW failed', err));
