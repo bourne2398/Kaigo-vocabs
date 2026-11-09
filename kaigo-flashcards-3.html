@@ -88,8 +88,7 @@
     #studyScreen { display: none; width: 100%; max-width: 480px; flex-direction: column; align-items: center; }
     .top-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 10px; }
     .back-btn {
-      background: #e2e8f0; border: none; border-radius: 10px;
-      padding: 8px 14px; font-size: 0.9rem; font-weight: 600;
+      background: #e2e8f0; border: none; border-radius: 10px; padding: 8px 14px; font-size: 0.9rem; font-weight: 600;
       color: var(--primary); cursor: pointer;
     }
     .current-day-label { font-weight: 700; color: var(--primary); font-size: 1rem; }
@@ -208,6 +207,29 @@
       width: 38px; height: 38px; background: #334155; color: #e2e8f0; box-shadow: none;
     }
     .flash-card .speak-btn:active, .flash-card .speak-btn.speaking { background: #3b82f6; }
+    .scroll-toolbar {
+      display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;
+    }
+    .scroll-tool-btn {
+      flex: 1; min-width: 120px;
+      background: #1e293b; border: 1px solid #334155; border-radius: 12px;
+      color: var(--dark-text); font-size: 0.9rem; font-weight: 600;
+      padding: 10px 12px; cursor: pointer; transition: background 0.15s, border-color 0.15s;
+    }
+    .scroll-tool-btn:active { background: #334155; }
+    .scroll-tool-btn.active {
+      background: #1e3a5f; border-color: #3b82f6; color: #93c5fd;
+    }
+    #cardList.hide-reading-en .reading,
+    #cardList.hide-reading-en .en {
+      display: none !important;
+    }
+    #cardList.hide-reading-en .flash-card {
+      min-height: 100px;
+    }
+    #cardList.hide-reading-en .jp-row {
+      margin-bottom: 0;
+    }
     footer { margin-top: 24px; font-size: 0.75rem; color: #94a3b8; text-align: center; }
     @media (max-width: 400px) {
       .jp { font-size: 1.75rem; }
@@ -291,6 +313,10 @@
       <div class="label" id="scrollDayLabel">Day 1</div>
       <div class="count-label" id="scrollCountLabel">0 cards</div>
     </div>
+    <div class="scroll-toolbar">
+      <button class="scroll-tool-btn" id="shuffleBtn" onclick="shuffleScrollList()">🔀 Shuffle</button>
+      <button class="scroll-tool-btn" id="hideReadingBtn" onclick="toggleHideReading()">👁 Hide reading/EN</button>
+    </div>
     <div class="card-list" id="cardList"></div>
   </div>
 
@@ -300,6 +326,8 @@
     let vocabData = [];
     let studyMode = 'recall';
     let queue = [], current = null, isFlipped = false, knownCount = 0, currentDay = 0;
+    let scrollCards = [];
+    let hideReadingEn = false;
 
     async function loadVocab() {
       try {
@@ -369,13 +397,24 @@
       document.getElementById('scrollScreen').style.display = 'block';
       document.getElementById('scrollDayLabel').textContent = day === 0 ? 'All Days' : 'Day ' + day;
       document.getElementById('scrollCountLabel').textContent = cards.length + ' cards';
+      scrollCards = [...cards];
+      hideReadingEn = false;
+      const hideBtn = document.getElementById('hideReadingBtn');
+      hideBtn.classList.remove('active');
+      hideBtn.textContent = '👁 Hide reading/EN';
+      renderScrollList();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function renderScrollList() {
       const list = document.getElementById('cardList');
       list.innerHTML = '';
-      if (cards.length === 0) {
+      list.classList.toggle('hide-reading-en', hideReadingEn);
+      if (scrollCards.length === 0) {
         list.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:40px 0">No cards found.</p>';
         return;
       }
-      cards.forEach(card => {
+      scrollCards.forEach(card => {
         const el = document.createElement('div');
         el.className = 'flash-card';
         const showReading = card.reading && card.reading !== card.jp &&
@@ -397,7 +436,22 @@
           speak(btn.dataset.jp, btn);
         });
       });
+    }
+
+    function shuffleScrollList() {
+      if (scrollCards.length < 2) return;
+      shuffle(scrollCards);
+      renderScrollList();
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function toggleHideReading() {
+      hideReadingEn = !hideReadingEn;
+      const list = document.getElementById('cardList');
+      list.classList.toggle('hide-reading-en', hideReadingEn);
+      const btn = document.getElementById('hideReadingBtn');
+      btn.classList.toggle('active', hideReadingEn);
+      btn.textContent = hideReadingEn ? '👁 Show reading/EN' : '👁 Hide reading/EN';
     }
 
     function showSelection() {
