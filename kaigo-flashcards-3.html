@@ -186,6 +186,10 @@
       background: var(--dark-card); border: 1px solid var(--dark-border);
       border-radius: 18px; padding: 22px 18px 18px; position: relative;
       min-height: 140px; display: flex; flex-direction: column; justify-content: center;
+      touch-action: pan-y;
+      user-select: none;
+      transition: transform 0.25s ease, opacity 0.25s ease, margin 0.25s ease, max-height 0.25s ease, padding 0.25s ease;
+      will-change: transform, opacity;
     }
     .flash-card .level {
       position: absolute; top: 12px; right: 14px; font-size: 0.72rem; font-weight: 700;
@@ -207,14 +211,27 @@
       width: 38px; height: 38px; background: #334155; color: #e2e8f0; box-shadow: none;
     }
     .flash-card .speak-btn:active, .flash-card .speak-btn.speaking { background: #3b82f6; }
+    .flash-card.swiping {
+      transition: none;
+    }
+    .flash-card.removing {
+      opacity: 0;
+      max-height: 0 !important;
+      min-height: 0 !important;
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
+      margin-bottom: 0 !important;
+      overflow: hidden;
+      pointer-events: none;
+    }
     .scroll-toolbar {
-      display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;
+      display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;
     }
     .scroll-tool-btn {
-      flex: 1; min-width: 120px;
+      flex: 1; min-width: 90px;
       background: #1e293b; border: 1px solid #334155; border-radius: 12px;
-      color: var(--dark-text); font-size: 0.9rem; font-weight: 600;
-      padding: 10px 12px; cursor: pointer; transition: background 0.15s, border-color 0.15s;
+      color: var(--dark-text); font-size: 0.82rem; font-weight: 600;
+      padding: 10px 8px; cursor: pointer; transition: background 0.15s, border-color 0.15s;
     }
     .scroll-tool-btn:active { background: #334155; }
     .scroll-tool-btn.active {
@@ -316,6 +333,7 @@
     <div class="scroll-toolbar">
       <button class="scroll-tool-btn" id="shuffleBtn" onclick="shuffleScrollList()">🔀 Shuffle</button>
       <button class="scroll-tool-btn" id="hideReadingBtn" onclick="toggleHideReading()">👁 Hide reading/EN</button>
+      <button class="scroll-tool-btn" id="resetHiddenBtn" onclick="resetHiddenCards()">↺ Reset</button>
     </div>
     <div class="card-list" id="cardList"></div>
   </div>
@@ -328,6 +346,8 @@
     let queue = [], current = null, isFlipped = false, knownCount = 0, currentDay = 0;
     let scrollCards = [];
     let hideReadingEn = false;
+    let hiddenCardNos = new Set();
+    let swipeState = null;
 
     async function loadVocab() {
       try {
@@ -396,9 +416,9 @@
       document.getElementById('studyScreen').style.display = 'none';
       document.getElementById('scrollScreen').style.display = 'block';
       document.getElementById('scrollDayLabel').textContent = day === 0 ? 'All Days' : 'Day ' + day;
-      document.getElementById('scrollCountLabel').textContent = cards.length + ' cards';
       scrollCards = [...cards];
       hideReadingEn = false;
+      hiddenCardNos = new Set();
       const hideBtn = document.getElementById('hideReadingBtn');
       hideBtn.classList.remove('active');
       hideBtn.textContent = '👁 Hide reading/EN';
@@ -406,17 +426,31 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    function updateScrollCount() {
+      const visible = scrollCards.filter(c => !hiddenCardNos.has(c.no)).length;
+      const total = scrollCards.length;
+      const label = document.getElementById('scrollCountLabel');
+      if (hiddenCardNos.size > 0) {
+        label.textContent = visible + ' / ' + total + ' cards';
+      } else {
+        label.textContent = total + ' cards';
+      }
+    }
+
     function renderScrollList() {
       const list = document.getElementById('cardList');
       list.innerHTML = '';
       list.classList.toggle('hide-reading-en', hideReadingEn);
-      if (scrollCards.length === 0) {
-        list.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:40px 0">No cards found.</p>';
+      const visibleCards = scrollCards.filter(c => !hiddenCardNos.has(c.no));
+      updateScrollCount();
+      if (visibleCards.length === 0) {
+        list.innerHTML = '<p style="text-align:center;color:#94a3b8;padding:40px 0">All cards hidden. Tap Reset to show them again.</p>';
         return;
       }
-      scrollCards.forEach(card => {
+      visibleCards.forEach(card => {
         const el = document.createElement('div');
         el.className = 'flash-card';
+        el.dataset.no = card.no;
         const showReading = card.reading && card.reading !== card.jp &&
           !/^[ァ-ンー・\\s\\dA-Za-z]+$/.test(card.jp.replace(/[（）()]/g, ''));
         el.innerHTML = `
@@ -426,15 +460,118 @@
             <div class="jp">${card.jp}</div>
           </div>
           <div class="en">${card.en}</div>
-          <button class="speak-btn" data-jp="${card.jp.replace(/"/g, '&quot;')}" title="Play pronunciation">🔊</button>
+          <button class="speak-btn" data-jp="${card.jp.replace(/"/g, '"')}" title="Play pronunciation">🔊</button>
         `;
         list.appendChild(el);
+        attachSwipeHandlers(el, card.no);
       });
       list.querySelectorAll('.speak-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
           speak(btn.dataset.jp, btn);
         });
+      });
+    }
+
+    function attachSwipeHandlers(el, cardNo) {
+      let startX = 0, startY = 0, currentX = 0, tracking = false, decided = false, isHorizontal = false;
+
+      const onStart = (clientX, clientY) => {
+        startX = clientX;
+        startY = clientY;
+        currentX = 0;
+        tracking = true;
+        decided = false;
+        isHorizontal = false;
+        el.classList.add('swiping');
+      };
+
+      const onMove = (clientX, clientY, e) => {
+        if (!tracking) return;
+        const dx = clientX - startX;
+        const dy = clientY - startY;
+        if (!decided) {
+          if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+            decided = true;
+            isHorizontal = Math.abs(dx) > Math.abs(dy);
+            if (!isHorizontal) {
+              tracking = false;
+              el.classList.remove('swiping');
+              el.style.transform = '';
+              el.style.opacity = '';
+              return;
+            }
+          } else {
+            return;
+          }
+        }
+        if (!isHorizontal) return;
+        e.preventDefault();
+        currentX = dx;
+        const abs = Math.abs(dx);
+        const opacity = Math.max(0.25, 1 - abs / 280);
+        el.style.transform = 'translateX(' + dx + 'px)';
+        el.style.opacity = String(opacity);
+      };
+
+      const onEnd = () => {
+        if (!tracking) return;
+        tracking = false;
+        el.classList.remove('swiping');
+        const threshold = 90;
+        if (Math.abs(currentX) > threshold) {
+          const dir = currentX > 0 ? 1 : -1;
+          el.style.transition = 'transform 0.22s ease, opacity 0.22s ease';
+          el.style.transform = 'translateX(' + (dir * window.innerWidth) + 'px)';
+          el.style.opacity = '0';
+          setTimeout(() => {
+            hiddenCardNos.add(cardNo);
+            el.classList.add('removing');
+            setTimeout(() => {
+              el.remove();
+              updateScrollCount();
+              if (document.querySelectorAll('#cardList .flash-card').length === 0) {
+                document.getElementById('cardList').innerHTML =
+                  '<p style="text-align:center;color:#94a3b8;padding:40px 0">All cards hidden. Tap Reset to show them again.</p>';
+              }
+            }, 220);
+          }, 200);
+        } else {
+          el.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+          el.style.transform = '';
+          el.style.opacity = '';
+          setTimeout(() => { el.style.transition = ''; }, 220);
+        }
+        currentX = 0;
+      };
+
+      el.addEventListener('touchstart', (e) => {
+        if (e.target.closest('.speak-btn')) return;
+        const t = e.touches[0];
+        onStart(t.clientX, t.clientY);
+      }, { passive: true });
+
+      el.addEventListener('touchmove', (e) => {
+        if (!tracking) return;
+        const t = e.touches[0];
+        onMove(t.clientX, t.clientY, e);
+      }, { passive: false });
+
+      el.addEventListener('touchend', onEnd);
+      el.addEventListener('touchcancel', onEnd);
+
+      // Mouse support for desktop testing
+      el.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.speak-btn')) return;
+        onStart(e.clientX, e.clientY);
+        const onMouseMove = (ev) => onMove(ev.clientX, ev.clientY, ev);
+        const onMouseUp = () => {
+          onEnd();
+          window.removeEventListener('mousemove', onMouseMove);
+          window.removeEventListener('mouseup', onMouseUp);
+        };
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
       });
     }
 
@@ -452,6 +589,13 @@
       const btn = document.getElementById('hideReadingBtn');
       btn.classList.toggle('active', hideReadingEn);
       btn.textContent = hideReadingEn ? '👁 Show reading/EN' : '👁 Hide reading/EN';
+    }
+
+    function resetHiddenCards() {
+      if (hiddenCardNos.size === 0) return;
+      hiddenCardNos.clear();
+      renderScrollList();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function showSelection() {
