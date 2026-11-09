@@ -66,7 +66,6 @@
     .mode-btn:active { transform: scale(0.98); }
     .day-section-title { font-size: 0.9rem; font-weight: 600; color: #475569; margin-top: 4px; }
     .day-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-    
     @media (min-width: 420px) { .day-grid { grid-template-columns: repeat(3, 1fr); } }
     .day-btn {
       background: white; border: 2px solid #e2e8f0; border-radius: 16px;
@@ -456,7 +455,8 @@
         return;
       }
       visibleCards.forEach(card => {
-        const el = document.createElement('div');\n        el.className = 'flash-card';
+        const el = document.createElement('div');
+        el.className = 'flash-card';
         el.dataset.no = card.no;
         const showReading = card.reading && card.reading !== card.jp &&
           !/^[ァ-ンー・\\s\\dA-Za-z]+$/.test(card.jp.replace(/[（）()]/g, ''));
@@ -467,7 +467,7 @@
             <div class="jp">${card.jp}</div>
           </div>
           <div class="en">${card.en}</div>
-          <button class="speak-btn" data-jp="${card.jp.replace(/"/g, '&quot;')}" title="Play pronunciation">🔊</button>
+          <button class="speak-btn" data-jp="${card.jp.replace(/"/g, '"')}" title="Play pronunciation">🔊</button>
         `;
         list.appendChild(el);
         attachSwipeHandlers(el, card.no);
@@ -554,7 +554,6 @@
           el.style.opacity = '';
           setTimeout(() => { el.style.transition = ''; }, 220);
 
-          // Tap (no real swipe) while Hide reading/EN is on → toggle reveal
           if (wasTracking && !moved && hideReadingEn) {
             el.classList.toggle('revealed');
           }
@@ -578,7 +577,6 @@
       el.addEventListener('touchend', onEnd);
       el.addEventListener('touchcancel', onEnd);
 
-      // Mouse support for desktop testing
       el.addEventListener('mousedown', (e) => {
         if (e.target.closest('.speak-btn')) return;
         onStart(e.clientX, e.clientY);
@@ -604,7 +602,6 @@
       hideReadingEn = !hideReadingEn;
       const list = document.getElementById('cardList');
       list.classList.toggle('hide-reading-en', hideReadingEn);
-      // Clear any per-card reveals when switching mode
       list.querySelectorAll('.flash-card.revealed').forEach(el => el.classList.remove('revealed'));
       const btn = document.getElementById('hideReadingBtn');
       btn.classList.toggle('active', hideReadingEn);
