@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#1e3a5f">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -255,6 +255,67 @@
       cursor: pointer;
     }
     footer { margin-top: 24px; font-size: 0.75rem; color: #94a3b8; text-align: center; }
+
+    /* Laptop, tablet and small-screen refinements */
+    @media (min-width: 700px) {
+      #selectionScreen, header { max-width: 620px; }
+      #studyScreen { max-width: 620px; }
+      #scrollScreen { width: min(100%, 760px); max-width: 760px; margin-inline: auto; }
+      .day-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .card-container { min-height: 250px; }
+      .card { height: 250px; }
+    }
+    @media (min-width: 700px) and (max-height: 820px) {
+      body { padding-top: 10px; padding-bottom: 10px; }
+      header { margin-bottom: 10px; }
+      h1 { font-size: 1.3rem; }
+      .subtitle { margin-top: 2px; }
+      #selectionScreen { gap: 10px; }
+      .mode-btn { padding: 12px 10px; }
+      .day-btn { padding: 12px 10px; }
+      .top-bar { margin-bottom: 6px; }
+      .stats { margin: 5px 0 8px; }
+      .stat { padding: 6px 10px; }
+      .card-container { min-height: 215px; margin: 4px 0; }
+      .card { height: 215px; }
+      .card-face { padding: 18px; }
+      .controls { margin-top: 5px; gap: 10px; }
+      button.action { padding: 12px 10px; }
+      .auto-speak-row { margin-top: 6px; }
+    }
+    @media (max-width: 520px) {
+      body { padding: 12px; }
+      .mode-row { gap: 8px; }
+      .mode-btn { padding: 13px 8px; font-size: .88rem; }
+      .day-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+      .day-btn { padding: 14px 8px; }
+      #studyScreen { max-width: 100%; }
+      .card { height: clamp(220px, 38vh, 270px); }
+      .card-container { min-height: clamp(220px, 38vh, 270px); }
+      .card-face { padding: 18px; }
+      .jp { font-size: clamp(1.55rem, 7vw, 2.1rem); overflow-wrap: anywhere; }
+      .en { font-size: clamp(1.15rem, 5vw, 1.55rem); overflow-wrap: anywhere; }
+      .controls { gap: 8px; }
+      button.action { padding: 13px 7px; font-size: .94rem; }
+      .scroll-header { margin-left: -12px; margin-right: -12px; padding-inline: 12px; }
+      .scroll-tool-btn { min-width: 0; }
+      .flash-card { padding-inline: 14px; }
+      .flash-card .jp { font-size: clamp(1.5rem, 7vw, 1.9rem); }
+    }
+    button, .card { -webkit-tap-highlight-color: transparent; }
+    button:focus-visible, .card:focus-visible {
+      outline: 3px solid #60a5fa;
+      outline-offset: 3px;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
+
     @media (max-width: 400px) {
       .jp { font-size: 1.75rem; }
       .en { font-size: 1.3rem; }
