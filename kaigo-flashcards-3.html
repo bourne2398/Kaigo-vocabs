@@ -364,6 +364,7 @@
       <input type="checkbox" id="autoSpeak" checked>
       <label for="autoSpeak">Auto-play pronunciation</label>
     </div>
+    <p id="audioStatus" role="status" aria-live="polite" style="display:none;width:100%;margin:6px 0 0;text-align:center;font-size:.78rem;color:#b45309"></p>
     <div class="card-container" id="cardContainer">
       <div class="card" id="card" onclick="flipCard()">
         <div class="card-face card-front">
@@ -754,29 +755,81 @@
 
     function restartCurrent() { startStudy(currentDay); }
 
+    let activeSpeechButton = null;
+
+    function getOfflineJapaneseVoice() {
+      if (!('speechSynthesis' in window)) return null;
+      const voices = window.speechSynthesis.getVoices() || [];
+      return voices.find(v => /^ja(?:-|$)/i.test(v.lang) && v.localService) || null;
+    }
+
+    function setAudioStatus(message) {
+      const status = document.getElementById('audioStatus');
+      if (!status) return;
+      status.textContent = message || '';
+      status.style.display = message ? 'block' : 'none';
+    }
+
+    function speakText(text, btn) {
+      if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
+        setAudioStatus('This browser does not provide built-in speech playback.');
+        return;
+      }
+
+      const voice = getOfflineJapaneseVoice();
+      if (!voice) {
+        setAudioStatus('Offline Japanese voice is not installed on this laptop. Install a Japanese text-to-speech voice in Windows, then reopen this page. Flashcards still work offline.');
+        return;
+      }
+
+      setAudioStatus('');
+      try {
+        window.speechSynthesis.cancel();
+        if (activeSpeechButton) activeSpeechButton.classList.remove('speaking');
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.voice = voice;
+        utterance.lang = voice.lang || 'ja-JP';
+        utterance.rate = 0.9;
+        activeSpeechButton = btn || null;
+        if (activeSpeechButton) activeSpeechButton.classList.add('speaking');
+        const clearSpeaking = () => {
+          if (activeSpeechButton) activeSpeechButton.classList.remove('speaking');
+          activeSpeechButton = null;
+        };
+        utterance.onend = clearSpeaking;
+        utterance.onerror = (event) => {
+          clearSpeaking();
+          setAudioStatus('Japanese audio could not play (' + (event.error || 'speech error') + '). Check that the Windows Japanese voice is installed.');
+        };
+        window.speechSynthesis.speak(utterance);
+      } catch (error) {
+        if (activeSpeechButton) activeSpeechButton.classList.remove('speaking');
+        activeSpeechButton = null;
+        setAudioStatus('Could not start offline Japanese audio. Check the Windows Japanese speech voice settings.');
+        console.error('Speech playback failed:', error);
+      }
+    }
+
     function speakJapanese() {
-      if (!current || !window.speechSynthesis) return;
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(current.jp);
-      u.lang = 'ja-JP';
-      u.rate = 0.9;
-      const btn = document.getElementById('speakBtn');
-      btn.classList.add('speaking');
-      u.onend = u.onerror = () => btn.classList.remove('speaking');
-      window.speechSynthesis.speak(u);
+      if (!current) return;
+      speakText(current.jp, document.getElementById('speakBtn'));
     }
 
     function speak(text, btn) {
-      if (!window.speechSynthesis) return;
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'ja-JP';
-      u.rate = 0.9;
-      if (btn) {
-        btn.classList.add('speaking');
-        u.onend = u.onerror = () => btn.classList.remove('speaking');
-      }
-      window.speechSynthesis.speak(u);
+      speakText(text, btn);
+    }
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.addEventListener('voiceschanged', () => {
+        if (getOfflineJapaneseVoice()) setAudioStatus('');
+      });
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          if (!getOfflineJapaneseVoice()) {
+            setAudioStatus('No offline Japanese voice detected. Install a Japanese text-to-speech voice in Windows to hear pronunciation without internet.');
+          }
+        }, 1200);
+      });
     }
 
     document.addEventListener('keydown', (e) => {
